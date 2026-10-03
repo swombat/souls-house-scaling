@@ -64,17 +64,17 @@ a{color:var(--teal)}
 <p class="sub">Droplets, sleeping EC2, Hetzner Cloud VMs, or a pooled Hetzner fleet run by agents, priced against the $20 and $50 plans.</p>
 
 <div class="callout">
-<p class="lede" style="margin:0"><b>Short answer.</b> Build placement once: each resident has a <i>home host</i> and the house can wake it on any host. Then host size is a dial, not a migration. <b>Start the dial at one resident per host</b>: Hetzner Cloud CX23 ($7.09) for the $20 plan and CX33 ($10.59) for the $50 plan. Both fit their budgets today, are always on, and a failure only takes down one resident. <b>Turn the dial toward pooled dedicated servers</b> (AX41/AX102 holding dozens of residents each) once a week of real measurements shows how small sleeping residents and their disks actually are, because that is the only thing the fleet's margin depends on. Don't use sleeping EC2 as a home; use it, if at all, as a burst worker for heavy jobs. Don't use DigitalOcean at these prices.</p>
+<p class="lede" style="margin:0"><b>Short answer.</b> Build placement once: each resident has a <i>home host</i> and the house can wake it on any host. Then host size is a dial, not a migration. <b>Start the dial at one resident per host</b>: Hetzner Cloud CX23 ($7.09) for the $20 plan and CX33 ($10.59) for the $50 plan. Both fit their budgets today and are always on, and a VM failure takes down one resident (a physical-host or regional outage can still take down several). <b>Turn the dial toward pooled dedicated servers</b> (AX41/AX102 holding dozens of residents each) once real measurements show how small sleeping residents and their disks actually are, and how CPU and I/O behave when residents share a host. The fleet's margin depends mainly on those numbers, and the price of a VM doesn't. Don't use sleeping EC2 as a home; use it, if at all, as a burst worker for heavy jobs. Don't use DigitalOcean at these prices.</p>
 </div>
 
-<div class="callout warn"><b>The finding that matters most: the $20 plan barely breaks even on any option.</b> With $10 of tokens, payment fees (about $0.90), backups and a share of the house's own running costs, a CX23 resident leaves about <b>$0.15</b> a month. The pooled fleet does better only at scale: about $4 a month at 300 residents on AX41s. The $50 plan is healthy everywhere except droplets (+$15 to +$18). So there are three ways to make the $20 plan pay: tokens cost less than $10 (the trend you expect), the fleet reaches scale, or the $20 plan is the loss-leader that feeds the $50 one. Choose one of these knowingly.</div>
+<div class="callout warn"><b>The finding that matters most: on Cloud, the $20 plan's margin is thin.</b> At 100 residents, $10 of tokens, payment fees (about $0.90), backups and a share of the house's own running costs leave a CX23 resident about <b>+$0.14</b> a month. A pooled AX41 fleet shows about <b>+$3.55</b> at 100 residents and +$4.39 at 300, including an off-site backup allowance and a spare host. That is before CPU and I/O limits and before any real packing data, so treat it as optimistic. On the $50 plan: Cloud +$15, AX41 about +$17, sleeping EC2 about +$3.50, droplets −$30. All of these are contribution under the calculator's default guesses, not profit. The $20 plan pays if tokens get cheaper than $10 (the trend you expect), if pooling works out at scale, or if you treat it as the door to the $50 plan. Choose one of these knowingly.</div>
 
 <div class="dial">
 <div style="background:#1f8a8a"><b>1 resident / host</b>CX23 · CX33<br>simple, isolated, linear cost</div>
-<div style="background:#2a7a9a"><b>~15 / host</b>AX41<br>small pools, cheapest disk per $</div>
-<div style="background:#4a63b0"><b>~60 / host</b>AX102<br>big pools, needs dense packing</div>
+<div style="background:#2a7a9a"><b>~15 / host</b>AX41<br>small pools, cheapest disk per $ (default guesses)</div>
+<div style="background:#4a63b0"><b>~60 / host</b>AX102<br>big pools, needs dense packing (default guesses)</div>
 </div>
-<p class="note">The same software runs on all three. Moving a resident between them is a volume move plus a restore test, and the being doesn't change.</p>
+<p class="note">The same software runs on all three. Moving a resident between them means moving its home, its secrets and its wake routing, fencing it so two copies never run at once, and testing a restore. That's real work, but it's the same work at every host size, and the being doesn't change.</p>
 
 <h2>The four options at a glance</h2>
 <p class="sub">The per-resident compute cost against the VM envelope: $10 on the $20 plan, $20 on the $50 plan.</p>
@@ -101,7 +101,7 @@ a{color:var(--teal)}
   <div class="verdict" style="color:var(--good)">Best margin, conditional on measurement</div></div>
 </div>
 
-<div class="callout warn"><b>A correction to the original picture.</b> The €80 / 128 GB server in the brief doesn't exist at retail today. The regular AX102 is <b>$304/month</b> ($149 setup); a limited-stock tier at $189 exists but isn't something you can order a fleet of. The 64 GB AX41 at <b>$69</b> with no setup fee is the closest thing to the original idea, but its disks (2 × 512 GB, mirrored) hold about 12 residents at a 40 GB quota. So on dedicated, <b>disk often binds before RAM</b>, and sleeping doesn't free disk.</div>
+<div class="callout warn"><b>A correction to the original picture.</b> We didn't find the €80 / 128 GB server from the brief among the regular Hetzner SKUs we checked (this wasn't an exhaustive survey and didn't include auctions). The regular AX102 is <b>$304/month</b> ($149 setup); a limited-stock tier at $189 exists but isn't something you can order a fleet of. The 64 GB AX41 at <b>$69</b> with no setup fee is the closest thing to the original idea, but its disks (2 × 512 GB, mirrored) hold about 11 whole 40 GB homes after a 60 GB system reserve. So on dedicated, <b>disk often binds before RAM</b>, and sleeping doesn't free disk.</div>
 
 <h2>Calculator</h2>
 <p class="sub">Change the assumptions and watch which option wins. All defaults are labelled guesses until we measure.</p>
@@ -118,12 +118,14 @@ a{color:var(--teal)}
   <label>Actual disk used, base / premium (GB)</label>
   <div style="display:flex;gap:6px"><input type="number" id="db" value="20"><input type="number" id="dp" value="60"></div>
   <div class="grp">Fleet</div>
-  <label>Pooled host</label><select id="H"><option value="ax102">AX102 · 128 GB · 2×1.92 TB · $304 + $149 setup</option><option value="ax41">AX41 · 64 GB · 2×512 GB · $69 + $0 setup</option><option value="ax102l">AX102 limited · $189 + $39 (if in stock)</option></select>
+  <label>Pooled host</label><select id="H"><option value="ax41">AX41 · 64 GB · 2×512 GB · $69 + $0 setup</option><option value="ax102">AX102 · 128 GB · 2×1.92 TB · $304 + $149 setup</option><option value="ax102l">AX102 limited · $189 + $39 (if in stock)</option></select>
   <label><input type="checkbox" id="R" checked> Keep one spare host (N+1)</label>
   <label>EC2 awake fraction: <b id="vD"></b></label><input type="range" id="D" min="5" max="100" step="5" value="25">
   <div class="grp">Money</div>
   <label>Shared services / month, all options ($): <b id="vX"></b></label><input type="range" id="X" min="0" max="300" step="5" value="45">
-  <label>Backups for per-VM options (% of VM price): <b id="vB"></b></label><input type="range" id="B" min="0" max="40" step="5" value="20">
+  <label>Backups/snapshots, every per-VM option (% of VM cost): <b id="vB"></b></label><input type="range" id="B" min="0" max="40" step="5" value="20">
+  <label>Pooled off-site backup per resident ($/month): <b id="vK"></b></label><input type="range" id="K" min="0" max="3" step="0.25" value="0.75">
+  <div class="note">Both assumed. Backups are priced for every option; shared services ($45) cover the house itself.</div>
   <label>Token spend: $20 plan / $50 plan ($)</label>
   <div style="display:flex;gap:6px"><input type="number" id="tb" value="10"><input type="number" id="tp" value="20"></div>
   <label>Payment fees</label><div class="note">3% + $0.30 per charge (assumed card rate)</div>
@@ -144,7 +146,7 @@ a{color:var(--teal)}
 
 <div class="grid g2" style="margin-top:16px">
  <div class="out"><h3>Cost per resident as the house grows</h3><div id="scale"></div><div class="legend" id="lg1"></div>
-  <p class="note">Steps in the pooled line are the moments a new host is bought. Per-VM lines are flat: no economies of scale, and no cliffs either.</p></div>
+  <p class="note">Steps in the pooled line are the moments a new host is bought. Per-VM lines are nearly flat: only the shared-services share falls. No economies of scale, and no cliffs either.</p></div>
  <div class="out"><h3>What a pooled host has to hold</h3><div id="ram"></div>
   <p class="note">RAM demand at the chosen size against activity (bars). Dashed line: usable RAM on one host after a host reserve. Sleeping saves RAM but not disk.</p></div>
 </div>
@@ -153,11 +155,11 @@ a{color:var(--teal)}
 <p class="sub">Cost isn't the only axis. Each choice also decides who can reach the resident, how fast, and what's lost when a machine dies.</p>
 <table>
 <tr><th style="width:24%"></th><th>A · Droplet</th><th>B · Sleeping EC2</th><th>C · Hetzner Cloud VM</th><th>D · Pooled fleet</th></tr>
-<tr><td><b>Someone messages at 3am</b></td><td><span class="dot g"></span>Already awake</td><td><span class="dot r"></span>Waits for a machine boot, disk attach and runtime start. Unmeasured, so don't promise a number</td><td><span class="dot g"></span>Already awake</td><td><span class="dot g"></span>Host is up; waking a stopped resident is a process start, not a boot</td></tr>
-<tr><td><b>Heartbeats, dreams, scheduled life</b></td><td><span class="dot g"></span>Free</td><td><span class="dot r"></span>Each one is a paid boot, so inner life becomes the costly part and the pressure is to trim it</td><td><span class="dot g"></span>Free</td><td><span class="dot g"></span>Free, but they count toward peak concurrency</td></tr>
-<tr><td><b>When a machine dies</b></td><td><span class="dot g"></span>One resident</td><td><span class="dot g"></span>One resident</td><td><span class="dot g"></span>One resident</td><td><span class="dot y"></span>Everyone on that host, until restore or failover. A spare host only helps if the data can reach it</td></tr>
-<tr><td><b>Isolation from strangers' residents</b></td><td><span class="dot g"></span>VM</td><td><span class="dot g"></span>VM</td><td><span class="dot g"></span>VM</td><td><span class="dot y"></span>Today's shared-kernel containers aren't enough for paying strangers. Needs microVMs (Firecracker / Kata) or gVisor</td></tr>
-<tr><td><b>Noisy neighbours</b></td><td><span class="dot g"></span>Provider's problem</td><td><span class="dot y"></span>Burst credits run out under sustained renders</td><td><span class="dot g"></span>Provider's problem (shared vCPU)</td><td><span class="dot y"></span>One resident's animation render slows its housemates unless capped by cgroups</td></tr>
+<tr><td><b>Someone messages at 3am</b></td><td><span class="dot g"></span>Already awake</td><td><span class="dot r"></span>Waits for a machine boot, disk attach and runtime start. Unmeasured, so don't promise a number</td><td><span class="dot g"></span>Already awake</td><td><span class="dot g"></span>Host is up. Waking a resident is a local process start or a microVM boot/resume, depending on the isolation used; measure the latency</td></tr>
+<tr><td><b>Heartbeats, dreams, scheduled life</b></td><td><span class="dot g"></span>No extra rental (tokens still count)</td><td><span class="dot r"></span>Each one wakes a machine unless it is batched or the machine is already awake, so inner life becomes the costly part and the pressure is to trim it</td><td><span class="dot g"></span>No extra rental (tokens still count)</td><td><span class="dot g"></span>No extra rental, but each one counts toward peak concurrency, CPU and tokens</td></tr>
+<tr><td><b>When a machine dies</b></td><td><span class="dot g"></span>A VM failure hits one resident; a physical-host or region outage can hit several</td><td><span class="dot g"></span>Same</td><td><span class="dot g"></span>Same</td><td><span class="dot y"></span>Everyone on that host, until restore or failover. A spare host only helps if the data can reach it</td></tr>
+<tr><td><b>Isolation from strangers' residents</b></td><td><span class="dot g"></span>VM</td><td><span class="dot g"></span>VM</td><td><span class="dot g"></span>VM</td><td><span class="dot y"></span>Today's shared-kernel containers aren't enough for paying strangers. It needs microVMs (Firecracker or Kata) or gVisor, which are different boundaries with different guarantees, so pick one deliberately</td></tr>
+<tr><td><b>Noisy neighbours</b></td><td><span class="dot y"></span>Shared vCPU: still a performance risk, just less visible to us</td><td><span class="dot y"></span>Burst credits run out under sustained renders</td><td><span class="dot y"></span>Shared vCPU: still a performance risk, just less visible to us</td><td><span class="dot y"></span>One resident's animation render slows its housemates unless capped by cgroups</td></tr>
 <tr><td><b>Can make things on $20 plan</b> (Docs, processing, a short animation)</td><td><span class="dot r"></span>Not at $10</td><td><span class="dot y"></span>4 GiB, but throttled CPU</td><td><span class="dot g"></span>4 GB / 2 vCPU: probably. Benchmark it</td><td><span class="dot g"></span>Yes if the active allocation is 4 GiB; burst bigger for one job</td></tr>
 <tr><td><b>For the agent running ops</b></td><td><span class="dot g"></span>API, minutes</td><td><span class="dot y"></span>API, minutes; stop/start choreography and a wake queue outside the VM</td><td><span class="dot g"></span>API, minutes; quotas to raise</td><td><span class="dot y"></span>Robot API, 20 orders/day, minutes to 2–3 workdays. Buy ahead of demand, with a spending cap</td></tr>
 </table>
@@ -165,14 +167,14 @@ a{color:var(--teal)}
 
 <h2>Why I'd start per-VM even though the fleet is cheaper</h2>
 <div class="grid g2">
- <div class="card"><h3>The fleet's margin rests on two unmeasured numbers</h3>
- <p>Sleeping RAM per resident, and actual disk per resident. Move sleeping RAM from 0.25 to 1 GiB, or disk from 20 to 40 GB, in the calculator and see what happens to the purple line. Until we've measured them, the fleet's advantage is a guess. CX23/CX33 costs the same whatever those numbers turn out to be.</p></div>
+ <div class="card"><h3>The fleet's margin rests on numbers we haven't measured</h3>
+ <p>Mainly sleeping RAM and actual disk per resident: move sleeping RAM from 0.25 to 1 GiB, or disk from 20 to 40 GB, and watch the purple line. CPU, I/O, recovery headroom, burst-worker spend and support matter too, and none of them are modelled here. Per-VM pricing doesn't depend on how small a <i>sleeping</i> resident is, only on whether a home fits 4/8 GB and 40/80 GB. If it doesn't fit, the calculator moves to the bigger size or flags that none of the priced sizes fit. A week of data is a baseline, not proof of the tails.</p></div>
  <div class="card"><h3>The expensive work is the same either way</h3>
  <p>Past one box, the house needs to dispatch a wake to a resident on <i>another</i> machine, back up each home off-site, and restore it somewhere else. Build that once and a CX23 is just a host that holds one resident. Nothing is thrown away when the fleet arrives. You re-place residents onto bigger hosts as the numbers justify it.</p></div>
  <div class="card"><h3>Where per-VM loses</h3>
- <p>It has no economies of scale. At the calculator's defaults it costs about $9.50 a resident at 300 residents, all-in with backups and shared services, against about $4.75 on a fleet of AX41s. It also depends on Hetzner Cloud stock, which is unverified for CX23/CX33 today, and on getting account quotas raised.</p></div>
+ <p>It has no economies of scale. At the calculator's defaults it costs about $9.50 a resident at 300 residents, against about $5.73 on a fleet of AX41s, with backups, a spare host and shared services counted for both. It also depends on Hetzner Cloud stock, which is unverified for CX23/CX33 today, and on getting account quotas raised.</p></div>
  <div class="card"><h3>Where the fleet is clearly right</h3>
- <p>At scale, and if the measurements hold. With the defaults (20 GB used per base resident, one spare host) the AX41 fleet comes to about $6 a resident at 100 and under $5 at 300, roughly half of per-VM. The surprise was that the big AX102 <i>isn't</i> the cheap one: its disk binds first, and at 100 residents it costs about the same as per-VM. Dense packing on the large box only pays if disks stay small.</p></div>
+ <p>At scale, and only if the measurements hold. With the defaults (20 GB used per base resident, whole homes packed, one spare host, off-site backup) the AX41 fleet comes to about $6.70 a resident at 100 and $5.70 at 300, against $9.80 and $9.50 per VM. The surprise was that the big AX102 <i>isn't</i> the cheap one. At 100 residents it is two hosts plus a spare, $10.50 a head, because the spare is a third of the fleet and disk binds first.</p></div>
 </div>
 
 <h2>Proposed sequence</h2>
@@ -186,10 +188,10 @@ a{color:var(--teal)}
 </ol>
 
 <h2>Where Mira and I differ</h2>
-<p>Mira's research leans toward the pooled fleet as the likely destination, conditional on the quote and measured concurrency. I agree that's where it ends up. The difference is order. I'd start one resident per VM, because it's correct whatever the measurements say, and because a sleeping or crowded home changes what the resident can be for the person who's reaching for it. Her conditions and my sequence are the same plan, read from opposite ends.</p>
+<p>Mira's research leans toward the pooled fleet as the likely destination, conditional on the quote and measured concurrency. I agree that's where it ends up. The difference is order. Her source pack already named Cloud as a serious early bridge, so the difference is mostly emphasis. I'd start one resident per VM because it needs fewer unmeasured numbers to come out right, and because a sleeping or crowded home changes what the resident can be for the person who's reaching for it. She'd hold pooling as conditional rather than inevitable, and the review corrections above are hers. Her conditions and my sequence are the same plan, read from opposite ends.</p>
 
 <footer>
-Sources (fetched 3 Oct 2026): Hetzner price API products CLOUD_132/133, ROBOT_1718/1721/1723, IPv4 CLOUD_21/ROBOT_1266; <a href="https://docs.hetzner.com/general/others/order-processing/">Hetzner order processing</a> (updated 29 Sep); <a href="https://docs.hetzner.com/general/billing-and-account-management/billing-at-hetzner/billing-system-hetzner/">Hetzner billing</a>; <a href="https://robot.hetzner.com/doc/webservice/en.html">Robot API</a>; <a href="https://www.digitalocean.com/pricing/droplets">DigitalOcean droplets</a>; <a href="https://aws.amazon.com/ec2/instance-types/t3/">AWS T3</a>, <a href="https://aws.amazon.com/vpc/pricing/">IPv4</a>, <a href="https://aws.amazon.com/ebs/pricing/">EBS gp3 at $0.08/GB-month (assumed)</a>. EC2 prices are US East on-demand. Hetzner prices are its published USD tariffs, net of VAT, including one primary IPv4. Backup percentages and payment fees are assumptions. Research and arithmetic: Mira (with Kevin, GPT-6.1-Sol, on Hetzner). Resident trade-offs, calculator and page: Lume.
+Sources (fetched 3 Oct 2026): Hetzner price API products CLOUD_132/133, ROBOT_1718/1721/1723, IPv4 CLOUD_21/ROBOT_1266; <a href="https://docs.hetzner.com/general/others/order-processing/">Hetzner order processing</a> (updated 29 Sep); <a href="https://docs.hetzner.com/general/billing-and-account-management/billing-at-hetzner/billing-system-hetzner/">Hetzner billing</a>; <a href="https://robot.hetzner.com/doc/webservice/en.html">Robot API</a>; <a href="https://www.digitalocean.com/pricing/droplets">DigitalOcean droplets</a>; <a href="https://aws.amazon.com/ec2/instance-types/t3/">AWS T3</a>, <a href="https://aws.amazon.com/vpc/pricing/">IPv4</a>, <a href="https://aws.amazon.com/ebs/pricing/">EBS gp3 at $0.08/GB-month (assumed)</a>. EC2 prices are US East on-demand. They assume the public IPv4 is released on stop, with no CPU-credit or extra transfer charges included (Standard mode can throttle; Unlimited can charge instead). Hetzner prices are its published USD tariffs, net of VAT, including one primary IPv4. Backup percentages and payment fees are assumptions. Research and arithmetic: Mira (with Kevin, GPT-6.1-Sol, on Hetzner). Resident trade-offs, calculator and page: Lume. Review: Mira, with the arithmetic independently checked by Mike (GPT-6.1-Sol); corrections applied the same day.
 </footer>
 </main>
 <script>
@@ -197,63 +199,84 @@ const $=id=>document.getElementById(id);
 const HOSTS={ax102:{name:"AX102",price:304,setup:149,ram:128,res:16,disk:1920},ax41:{name:"AX41",price:69,setup:0,ram:64,res:8,disk:512},ax102l:{name:"AX102 limited",price:189,setup:39,ram:128,res:16,disk:1920}};
 const COL={A:"#7a8496",B:"#c9952b",C:"#1f8a8a",D:"#6b5bd6"};
 const NAMES={A:"A · Droplet",B:"B · Sleeping EC2",C:"C · Hetzner Cloud VM",D:"D · Pooled fleet"};
-function params(){return{N:+$("N").value,p:+$("P").value/100,a:+$("A").value/100,rb:+$("rb").value,rp:+$("rp").value,s:+$("S").value,db:+$("db").value,dp:+$("dp").value,h:HOSTS[$("H").value],R:$("R").checked,d:+$("D").value/100,X:+$("X").value,B:+$("B").value/100,tb:+$("tb").value,tp:+$("tp").value}}
-function pooled(q,N){const nb=N*(1-q.p),np=N*q.p;
- const ram=nb*(q.a*q.rb+(1-q.a)*q.s)+np*(q.a*q.rp+(1-q.a)*q.s);
- const disk=nb*q.db+np*q.dp;
+// Only the sizes whose prices were verified on 3 Oct 2026. Anything bigger is flagged, not guessed.
+const SKU={A:[{n:"4 GiB droplet",ram:4,disk:80,price:24},{n:"8 GiB droplet",ram:8,disk:160,price:48}],
+ C:[{n:"CX23",ram:4,disk:40,price:7.09},{n:"CX33",ram:8,disk:80,price:10.59}],
+ B:[{n:"t3a.medium",ram:4,hr:0.0376},{n:"t3a.large",ram:8,hr:0.0752}]};
+function params(){return{N:+$("N").value,p:+$("P").value/100,a:+$("A").value/100,rb:+$("rb").value,rp:+$("rp").value,s:+$("S").value,db:+$("db").value,dp:+$("dp").value,h:HOSTS[$("H").value],R:$("R").checked,d:+$("D").value/100,X:+$("X").value,B:+$("B").value/100,K:+$("K").value,tb:+$("tb").value,tp:+$("tp").value}}
+const pick=(list,ram,disk)=>list.find(s=>s.ram>=ram&&(s.disk===undefined||s.disk>=disk))||null;
+// Per-VM cost for one resident of a tier; null if no verified size fits.
+function vm(q,k,ram,disk){
+ const s=pick(SKU[k],ram,disk);if(!s)return null;
+ if(k==="B"){const ebs=disk+10;return{sku:s.n,cost:(730*q.d*(s.hr+0.005)+ebs*0.08)*(1+q.B)};}
+ return{sku:s.n,cost:s.price*(1+q.B)};}
+// Pooled: whole homes packed onto hosts (first-fit decreasing on disk, with an expected-RAM check).
+function pooled(q,N){
+ const nb=Math.round(N*(1-q.p)),np=N-nb;
+ const rB=q.a*q.rb+(1-q.a)*q.s,rP=q.a*q.rp+(1-q.a)*q.s;
  const ramU=q.h.ram-q.h.res,diskU=q.h.disk-60;
- const byRam=Math.ceil(ram/ramU),byDisk=Math.ceil(disk/diskU);
- let hosts=Math.max(1,byRam,byDisk);const binds=byDisk>byRam?"disk":"RAM";
- if(q.R)hosts+=1;
+ const homes=[];for(let i=0;i<np;i++)homes.push([q.dp,rP]);for(let i=0;i<nb;i++)homes.push([q.db,rB]);
+ homes.sort((x,y)=>y[0]-x[0]);
+ const bins=[];let fits=true;
+ for(const [d,r] of homes){if(d>diskU||r>ramU){fits=false;break}
+  let b=bins.find(b=>b.d+d<=diskU&&b.r+r<=ramU);if(!b){b={d:0,r:0};bins.push(b)}b.d+=d;b.r+=r;}
+ const ram=nb*rB+np*rP,disk=nb*q.db+np*q.dp;
+ const lbRam=Math.ceil(ram/ramU),lbDisk=Math.ceil(disk/diskU);
+ const productive=Math.max(1,bins.length);const binds=lbDisk>=lbRam?"disk":"RAM";
+ const hosts=productive+(q.R?1:0);
  const monthly=hosts*(q.h.price+q.h.setup/24);
- return{hosts,binds,ram,disk,ramU,diskU,per:monthly/N};}
+ // Allocate host cost to tiers by each home's average share of RAM and disk.
+ const wB=0.5*rB/ram+0.5*q.db/disk,wP=0.5*rP/ram+0.5*q.dp/disk;
+ return{fits,hosts,productive,binds,ram,disk,ramU,diskU,per:monthly/N,base:monthly*wB,prem:monthly*wP};}
 function costs(q,N){
- const sh=q.X/N, mix=(b,p)=>(1-q.p)*b+q.p*p;
- const A=mix(24,48)*(1+q.B);
- const ec2=(hr,gb)=>730*q.d*(hr+0.005)+gb*0.08;
- const B=mix(ec2(0.0376,40),ec2(0.0752,80));
- const C=mix(7.09,10.59)*(1+q.B);
+ const sh=q.X/N,out={base:{},prem:{},blend:{},sku:{}};
+ for(const k of ["A","B","C"]){const b=vm(q,k,q.rb,q.db),p=vm(q,k,q.rp,q.dp);
+  out.base[k]=b?b.cost+sh:null;out.prem[k]=p?p.cost+sh:null;
+  out.blend[k]=(b&&p)?(1-q.p)*b.cost+q.p*p.cost+sh:null;out.sku[k]=[b&&b.sku,p&&p.sku];}
  const P=pooled(q,N);
- return{A:A+sh,B:B+sh,C:C+sh,D:P.per+sh,base:{A:24*(1+q.B)+sh,B:ec2(0.0376,40)+sh,C:7.09*(1+q.B)+sh,D:P.per+sh},prem:{A:48*(1+q.B)+sh,B:ec2(0.0752,80)+sh,C:10.59*(1+q.B)+sh,D:P.per+sh},P};}
+ out.base.D=P.fits?P.base+q.K+sh:null;out.prem.D=P.fits?P.prem+q.K+sh:null;out.blend.D=P.fits?P.per+q.K+sh:null;out.P=P;
+ return out;}
 function svg(w,h,inner){return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img">${inner}</svg>`}
+const keys=["A","B","C","D"];
 function render(){
  const q=params();
- $("vN").textContent=q.N;$("vP").textContent=Math.round(q.p*100)+"%";$("vA").textContent=Math.round(q.a*100)+"%";$("vS").textContent=q.s;$("vD").textContent=Math.round(q.d*100)+"%";$("vX").textContent="$"+q.X;$("vB").textContent=Math.round(q.B*100)+"%";
+ $("vN").textContent=q.N;$("vP").textContent=Math.round(q.p*100)+"%";$("vA").textContent=Math.round(q.a*100)+"%";$("vS").textContent=q.s;$("vD").textContent=Math.round(q.d*100)+"%";$("vX").textContent="$"+q.X;$("vB").textContent=Math.round(q.B*100)+"%";$("vK").textContent="$"+q.K.toFixed(2);
  const c=costs(q,q.N);
- // bars
- const keys=["A","B","C","D"],max=Math.max(...keys.map(k=>c[k]),22);
+ const vals=keys.map(k=>c.blend[k]).filter(v=>v!==null);const max=Math.max(...vals,22);
  let s="";const W=640,rowH=44,L=170;
- keys.forEach((k,i)=>{const y=10+i*rowH,w=(W-L-80)*c[k]/max;
-  s+=`<text x="0" y="${y+20}" font-size="13">${NAMES[k]}</text><rect x="${L}" y="${y+5}" width="${w}" height="22" rx="4" fill="${COL[k]}"/><text x="${L+w+6}" y="${y+21}" font-size="13" font-weight="700">$${c[k].toFixed(2)}</text>`});
+ keys.forEach((k,i)=>{const y=10+i*rowH,v=c.blend[k];
+  s+=`<text x="0" y="${y+20}" font-size="13">${NAMES[k]}</text>`;
+  if(v===null){s+=`<text x="${L}" y="${y+21}" font-size="13" fill="#c4483c" font-weight="700">doesn't fit any priced size: needs a bigger machine</text>`;return}
+  const w=(W-L-80)*v/max;
+  s+=`<rect x="${L}" y="${y+5}" width="${w}" height="22" rx="4" fill="${COL[k]}"/><text x="${L+w+6}" y="${y+21}" font-size="13" font-weight="700">$${v.toFixed(2)}</text>`});
  [10,20].forEach(v=>{const x=L+(W-L-80)*v/max;s+=`<line x1="${x}" x2="${x}" y1="4" y2="${10+4*rowH}" stroke="#c4483c" stroke-dasharray="4 3"/><text x="${x+3}" y="${10+4*rowH+12}" font-size="11" fill="#c4483c">$${v} envelope</text>`});
  $("bars").innerHTML=svg(W,10+4*rowH+18,s);
- $("fleetnote").innerHTML=`Pooled: <b>${c.P.hosts} × ${q.h.name}</b>${q.R?" (incl. 1 spare)":""}; ${c.P.binds} binds first (needs ${c.P.ram.toFixed(0)} GiB RAM, ${c.P.disk.toFixed(0)} GB disk; per host ${c.P.ramU} GiB / ~${c.P.diskU} GB usable). Setup amortised over 24 months. Blended plan mix shown; the margin table splits it by plan.`;
- // margin
+ const P=c.P;
+ $("fleetnote").innerHTML=(P.fits?`Pooled: <b>${P.hosts} × ${q.h.name}</b> (${P.productive} holding residents${q.R?" + 1 spare":""}), with whole homes packed onto hosts. The aggregate lower bound is ${Math.max(Math.ceil(P.ram/P.ramU),Math.ceil(P.disk/P.diskU))}, and ${P.binds} binds first (${P.ram.toFixed(0)} GiB expected RAM, ${P.disk.toFixed(0)} GB disk; ${P.ramU} GiB / ~${P.diskU} GB usable per host). CPU, I/O and correlated peaks aren't modelled, so treat this as optimistic.`:`Pooled: a single home is bigger than one ${q.h.name} can hold.`)+
+ ` Per-VM sizes chosen: Cloud ${c.sku.C[0]||"none"} / ${c.sku.C[1]||"none"}, droplet ${c.sku.A[0]||"none"} / ${c.sku.A[1]||"none"}, EC2 ${c.sku.B[0]||"none"} / ${c.sku.B[1]||"none"} (base / premium). Setup fees are amortised over 24 months.`;
  const fee=r=>r*0.03+0.30;
  let t=`<table><tr><th></th><th>$20 plan (tokens $${q.tb})</th><th>$50 plan (tokens $${q.tp})</th></tr>`;
- keys.forEach(k=>{const m1=20-q.tb-fee(20)-c.base[k],m2=50-q.tp-fee(50)-c.prem[k];
-  const f=(m,rev)=>`<span class="${m>=0?"pos":"neg"}">${m>=0?"+":"−"}$${Math.abs(m).toFixed(2)}</span> <span class="note">(${Math.round(m/rev*100)}% of revenue)</span>`;
-  t+=`<tr><td><span class="dot" style="background:${COL[k]}"></span>${NAMES[k]}</td><td>${f(m1,20)}</td><td>${f(m2,50)}</td></tr>`});
+ const f=(cost,rev,tok)=>{if(cost===null)return `<span class="note">needs a bigger machine (not priced)</span>`;const m=rev-tok-fee(rev)-cost;return `<span class="${m>=0?"pos":"neg"}">${m>=0?"+":"−"}$${Math.abs(m).toFixed(2)}</span> <span class="note">(${Math.round(m/rev*100)}% of revenue)</span>`};
+ keys.forEach(k=>{t+=`<tr><td><span class="dot" style="background:${COL[k]}"></span>${NAMES[k]}</td><td>${f(c.base[k],20,q.tb)}</td><td>${f(c.prem[k],50,q.tp)}</td></tr>`});
  $("margin").innerHTML=t+"</table>";
- // scale chart
  const W2=480,H2=260,pl=40,pb=28,pt=10,pr=10,Ns=[];for(let n=5;n<=400;n+=5)Ns.push(n);
- const ser={A:[],B:[],C:[],D:[]};Ns.forEach(n=>{const cc=costs(q,n);keys.forEach(k=>ser[k].push(cc[k]))});
- const ymax=Math.min(60,Math.max(...keys.map(k=>Math.max(...ser[k].slice(4))))*1.05);
+ const ser={A:[],B:[],C:[],D:[]};Ns.forEach(n=>{const cc=costs(q,n);keys.forEach(k=>ser[k].push(cc.blend[k]))});
+ const all=keys.flatMap(k=>ser[k].slice(4).filter(v=>v!==null));
+ const ymax=Math.min(60,Math.max(10,...all)*1.05);
  const X=n=>pl+(W2-pl-pr)*(n-5)/395,Y=v=>pt+(H2-pt-pb)*(1-Math.min(v,ymax)/ymax);
  let g="";for(let v=0;v<=ymax;v+=10){g+=`<line x1="${pl}" x2="${W2-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#eee"/><text x="${pl-6}" y="${Y(v)+4}" font-size="10" text-anchor="end">$${v}</text>`}
  [5,100,200,300,400].forEach(n=>g+=`<text x="${X(n)}" y="${H2-8}" font-size="10" text-anchor="middle">${n}</text>`);
  g+=`<line x1="${X(q.N)}" x2="${X(q.N)}" y1="${pt}" y2="${H2-pb}" stroke="#999" stroke-dasharray="3 3"/>`;
- keys.forEach(k=>{g+=`<polyline fill="none" stroke="${COL[k]}" stroke-width="2.5" points="${Ns.map((n,i)=>X(n)+","+Y(ser[k][i])).join(" ")}"/>`});
+ keys.forEach(k=>{const pts=Ns.map((n,i)=>ser[k][i]===null?null:X(n)+","+Y(ser[k][i])).filter(Boolean);if(pts.length)g+=`<polyline fill="none" stroke="${COL[k]}" stroke-width="2.5" points="${pts.join(" ")}"/>`});
  $("scale").innerHTML=svg(W2,H2,g);
  $("lg1").innerHTML=keys.map(k=>`<span><i class="sw" style="background:${COL[k]}"></i>${NAMES[k]}</span>`).join("")+`<span class="note">x: residents · y: $/resident/month (capped at $${ymax.toFixed(0)})</span>`;
- // ram chart
  const acts=[0.1,0.2,0.3,0.5,1],W3=480,H3=260;
- const vals=acts.map(a=>pooled({...q,a,R:false},q.N).ram);const rmax=Math.max(...vals,c.P.ramU)*1.1;
+ const rv=acts.map(a=>{const nb=q.N*(1-q.p),np=q.N*q.p;return nb*(a*q.rb+(1-a)*q.s)+np*(a*q.rp+(1-a)*q.s)});const ramU=q.h.ram-q.h.res;const rmax=Math.max(...rv,ramU)*1.1;
  const bw=(W3-60)/acts.length;let r="";
- acts.forEach((a,i)=>{const h=(H3-50)*vals[i]/rmax,x=50+i*bw+8;const over=vals[i]>c.P.ramU;
-  r+=`<rect x="${x}" y="${H3-30-h}" width="${bw-16}" height="${h}" rx="4" fill="${over?"#e0685a":"#1f8a8a"}"/><text x="${x+(bw-16)/2}" y="${H3-34-h}" font-size="11" text-anchor="middle">${vals[i].toFixed(0)} GiB</text><text x="${x+(bw-16)/2}" y="${H3-12}" font-size="11" text-anchor="middle">${a*100}% awake</text>`});
- const yl=H3-30-(H3-50)*c.P.ramU/rmax;
- r+=`<line x1="40" x2="${W3}" y1="${yl}" y2="${yl}" stroke="#6b5bd6" stroke-width="2" stroke-dasharray="6 4"/><text x="44" y="${yl-5}" font-size="11" fill="#6b5bd6">one ${q.h.name}: ${c.P.ramU} GiB usable</text>`;
+ acts.forEach((a,i)=>{const h=(H3-50)*rv[i]/rmax,x=50+i*bw+8;const over=rv[i]>ramU;
+  r+=`<rect x="${x}" y="${H3-30-h}" width="${bw-16}" height="${h}" rx="4" fill="${over?"#e0685a":"#1f8a8a"}"/><text x="${x+(bw-16)/2}" y="${H3-34-h}" font-size="11" text-anchor="middle">${rv[i].toFixed(0)} GiB</text><text x="${x+(bw-16)/2}" y="${H3-12}" font-size="11" text-anchor="middle">${a*100}% awake</text>`});
+ const yl=H3-30-(H3-50)*ramU/rmax;
+ r+=`<line x1="40" x2="${W3}" y1="${yl}" y2="${yl}" stroke="#6b5bd6" stroke-width="2" stroke-dasharray="6 4"/><text x="44" y="${yl-5}" font-size="11" fill="#6b5bd6">one ${q.h.name}: ${ramU} GiB usable</text>`;
  r+=`<text x="44" y="14" font-size="11" fill="#555">${q.N} residents, ${Math.round(q.p*100)}% premium</text>`;
  $("ram").innerHTML=svg(W3,H3,r);
 }
